@@ -91,14 +91,13 @@ class CarretaForm
                     ->icon('heroicon-s-document')
                     ->schema([
                         FileUpload::make('documento')
-                            ->hintActions([
-                                Action::make('print')
-                                    ->icon('heroicon-o-printer')
-                                    ->color('primary')
-                                    ->url(fn($record) => route('documento.print', $record->id), )
-                                    ->visible(fn($record) => $record && $record->documento)
-                                    ->openUrlInNewTab(),
+                            ->label('Arquivo')
+                            ->openable()
+                            ->validationMessages([
+                                'required' => 'O campo Arquivo é obrigatório.',
                             ])
+                            ->maxSize(2048)
+                            ->hint('Máx. 2MB')
                             ->disk('public')
                             ->directory('documentos_carretas')
                             ->downloadable(),
