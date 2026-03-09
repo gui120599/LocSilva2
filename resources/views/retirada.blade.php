@@ -388,7 +388,7 @@
 
                         <div class="flex items-start">
                             <span class="text-orange-600 font-bold mr-2">⚠</span>
-                            <p>Na devolução, <strong>CARRETAS DE ANIMAIS, será cobrado a taxa de limpeza no valor de R$20,00.</strong></p>
+                            <p>Na devolução, <strong>CARRETAS DE ANIMAIS, será cobrado a taxa de limpeza no valor de R$70,00.</strong></p>
                         </div>
 
                         <!-- 🆕 NOVAS REGRAS ADICIONADAS -->
