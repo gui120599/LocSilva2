@@ -3,77 +3,150 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Http\Client\ConnectionException;
 
 class IBGEServices
 {
+    /**
+     * Método base para padronizar todas as chamadas HTTP.
+     * Aqui centralizamos:
+     * - Headers
+     * - Timeout
+     * - Retry (tentativas automáticas)
+     * - Forçar IPv4 (evita erro cURL 52)
+     */
+    protected static function http()
+    {
+        return Http::withHeaders([
+                'Accept' => 'application/json', // Espera resposta JSON
+            ])
+            ->timeout(20) // Tempo máximo de espera (segundos)
+            ->retry(3, 2000) // Tenta 3 vezes com intervalo de 2 segundos
+            ->withOptions([
+                'curl' => [
+                    CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4, // Força uso de IPv4 (resolve muitos problemas de conexão)
+                ],
+            ]);
+    }
+
+    /**
+     * Busca informações de endereço pelo CEP usando ViaCEP
+     */
     public static function buscaCep(string $search): array
     {
+        // Validação básica
         if (empty($search)) {
-            return ['error' => 'CEP obrigatorio'];
+            return ['error' => 'CEP obrigatório'];
         }
-        $reponse = Http::withHeaders([
-            'Accept' => 'application/json',
-        ])
-            ->get('https://viacep.com.br/ws/' . $search . '/json/');
-        if ($reponse->failed()) {
+
+        try {
+            // Faz a requisição para API do ViaCEP
+            $response = self::http()
+                ->get("https://viacep.com.br/ws/{$search}/json/");
+
+            // Verifica se a requisição falhou (status != 200)
+            if ($response->failed()) {
+                return [];
+            }
+
+            // Retorna JSON convertido para array
+            return $response->json() ?? [];
+
+        } catch (ConnectionException $e) {
+            // Captura erros de conexão (timeout, DNS, API fora, etc.)
             return [];
         }
-        return $reponse->json() ?? [];
     }
 
+    /**
+     * Retorna lista de estados (UFs)
+     * Formato: ['GO' => 'Goiás', 'SP' => 'São Paulo']
+     */
     public static function ufs(): array
     {
-        $response = Http::withHeaders([
-            'Accept' => 'application/json',
-        ])
-            ->get('https://servicodados.ibge.gov.br/api/v1/localidades/estados');
+        // Cache por 24h para evitar chamadas constantes na API
+        return Cache::remember('ibge_ufs', 86400, function () {
 
-        // Verifica se a requisição falhou e retorna um array vazio.
-        if ($response->failed()) {
-            return [];
-        }
+            try {
+                $response = self::http()
+                    ->get('https://servicodados.ibge.gov.br/api/v1/localidades/estados');
 
-        // Decodifica a resposta JSON para um array PHP.
-        $estados = $response->json();
+                if ($response->failed()) {
+                    return [];
+                }
 
-        // Prepara o array no formato esperado pelo Filament: ['sigla' => 'nome']
-        $opcoes = [];
+                $estados = $response->json();
+                $opcoes = [];
 
-        if (is_array($estados)) {
-            foreach ($estados as $estado) {
-                // Usa 'sigla' como chave (o valor que será salvo) e 'nome' como label.
-                $opcoes[$estado['sigla']] = $estado['nome'];
+                if (is_array($estados)) {
+                    foreach ($estados as $estado) {
+
+                        /**
+                         * Monta array no padrão do Filament:
+                         * chave = valor salvo
+                         * valor = label exibido
+                         */
+                        $opcoes[$estado['sigla']] = $estado['nome'];
+                    }
+
+                    // Ordena alfabeticamente pelo nome (melhora UX no select)
+                    asort($opcoes);
+                }
+
+                return $opcoes;
+
+            } catch (ConnectionException $e) {
+                // Caso API do IBGE esteja fora ou erro de rede
+                return [];
             }
-        }
-
-        // Retorna o array formatado (ex: ['SP' => 'São Paulo', 'RJ' => 'Rio de Janeiro'])
-        return $opcoes;
+        });
     }
 
+    /**
+     * Retorna cidades de uma UF específica
+     * Exemplo: GO -> ['Goiânia', 'Anápolis', ...]
+     */
     public static function cidadesPorUf(string $uf): array
     {
-        // A API do IBGE para cidades exige a sigla da UF na URL.
-        $response = Http::withHeaders([
-            'Accept' => 'application/json',
-        ])
-            // Note o uso da variável $uf na URL (interpolação de string)
-            ->get("https://servicodados.ibge.gov.br/api/v1/localidades/estados/{$uf}/municipios?orderBy=nome");
-
-        if ($response->failed()) {
+        // Evita chamada desnecessária
+        if (empty($uf)) {
             return [];
         }
 
-        $cidades = $response->json();
-        $opcoes = [];
+        // Cache por UF (melhora MUITO performance)
+        return Cache::remember("ibge_cidades_{$uf}", 86400, function () use ($uf) {
 
-        if (is_array($cidades)) {
-            foreach ($cidades as $cidade) {
-                // Usamos o 'id' do município como valor (chave) e o 'nome' como label de exibição.
-                $opcoes[$cidade['nome']] = $cidade['nome'];
+            try {
+                $response = self::http()
+                    ->get("https://servicodados.ibge.gov.br/api/v1/localidades/estados/{$uf}/municipios?orderBy=nome");
+
+                if ($response->failed()) {
+                    return [];
+                }
+
+                $cidades = $response->json();
+                $opcoes = [];
+
+                if (is_array($cidades)) {
+                    foreach ($cidades as $cidade) {
+
+                        /**
+                         * Aqui você decidiu usar:
+                         * chave = nome
+                         * valor = nome
+                         *
+                         * (Se quiser melhorar depois, pode usar ID do IBGE)
+                         */
+                        $opcoes[$cidade['nome']] = $cidade['nome'];
+                    }
+                }
+
+                return $opcoes;
+
+            } catch (ConnectionException $e) {
+                return [];
             }
-        }
-
-        // Retorna o array formatado (ex: [1234567 => 'São Gonçalo'])
-        return $opcoes;
+        });
     }
 }
