@@ -636,6 +636,7 @@ class AluguelForm
             ->with('name', $model?->descricao_adicional)
             ->with('email', $model?->valor_adicional)
             ->with('image', $model?->foto_adicional)
+            ->with('suffix', '/dia')
             ->render();
     }
 

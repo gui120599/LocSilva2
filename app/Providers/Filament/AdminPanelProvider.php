@@ -6,11 +6,13 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationGroup;
 use Filament\Navigation\NavigationItem;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\Support\Icons\Heroicon;
 use Filament\Widgets\AccountWidget;
 use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -33,6 +35,12 @@ class AdminPanelProvider extends PanelProvider
                 'primary' => "#fa2d34",
                 'secondary' => "#faf205"
             ])
+            ->navigationGroups([
+                NavigationGroup::make('Oficina')
+                    ->label('Oficina'),
+                NavigationGroup::make('Cadastros')
+                    ->label('Cadastros'),
+            ])
             ->passwordReset()
             ->favicon(asset('logos/favicon.png'))
             ->sidebarCollapsibleOnDesktop()
@@ -47,8 +55,7 @@ class AdminPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([
                 /*AccountWidget::class,
-                FilamentInfoWidget::class,*/
-            ])
+                FilamentInfoWidget::class,*/])
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
@@ -60,8 +67,7 @@ class AdminPanelProvider extends PanelProvider
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
             ])
-            ->plugins([
-            ])
+            ->plugins([])
             ->authMiddleware([
                 Authenticate::class,
             ])

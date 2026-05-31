@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\Caixa;
 use App\Models\MovimentoCaixa;
+use App\Models\OrdemServico;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Log;
 
@@ -47,6 +48,25 @@ class MovimentoCaixaObserver
                         " - Aluguel #{$movimento->aluguel_id}",
                     'caixa_id' => $caixaId ? $caixaId->id : null,
                 ]);
+            }
+
+            // Verifica se o movimento está vinculado a uma OS
+            if ($movimento->ordem_servico_id) {
+                $movimento->update([
+                    'descricao' => "Pagamento R$" .
+                        number_format($movimento->valor_total_movimento, 2, ',', '.') .
+                        " - OS #{$movimento->ordem_servico_id}",
+                    'caixa_id' => $caixaId ? $caixaId->id : null,
+                ]);
+
+                $os = OrdemServico::find($movimento->ordem_servico_id);
+                if ($os) {
+                    $totalPago = $os->movimentos()->where('tipo', 'entrada')->sum('valor_total_movimento');
+                    $os->update([
+                        'valor_pago'  => $totalPago,
+                        'valor_saldo' => max(0, $os->valor_total - $totalPago),
+                    ]);
+                }
             }
 
 

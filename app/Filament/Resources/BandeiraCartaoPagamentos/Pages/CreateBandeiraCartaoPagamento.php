@@ -8,4 +8,9 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateBandeiraCartaoPagamento extends CreateRecord
 {
     protected static string $resource = BandeiraCartaoPagamentoResource::class;
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
 }

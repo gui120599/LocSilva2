@@ -8,4 +8,9 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateCaixa extends CreateRecord
 {
     protected static string $resource = CaixaResource::class;
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
 }

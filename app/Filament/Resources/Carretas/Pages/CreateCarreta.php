@@ -8,4 +8,9 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateCarreta extends CreateRecord
 {
     protected static string $resource = CarretaResource::class;
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
 }

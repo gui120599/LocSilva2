@@ -35,12 +35,28 @@ class Cliente extends Model
         return $this->hasMany(ArquivoCliente::class, 'cliente_id');
     }
 
-    /** 
+    /**
      * Aluguéis do cliente
      */
     public function alugueis(): HasMany
     {
         return $this->hasMany(Aluguel::class, 'cliente_id');
+    }
+
+    /**
+     * Orçamentos do cliente
+     */
+    public function orcamentos(): HasMany
+    {
+        return $this->hasMany(Orcamento::class, 'cliente_id');
+    }
+
+    /**
+     * Ordens de serviço do cliente
+     */
+    public function ordensServicos(): HasMany
+    {
+        return $this->hasMany(OrdemServico::class, 'cliente_id');
     }
 
     /**

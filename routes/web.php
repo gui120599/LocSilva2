@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\AluguelController;
 use App\Http\Controllers\CaixaController;
+use App\Http\Controllers\OrcamentoController;
+use App\Http\Controllers\OrdemServicoController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -12,10 +14,14 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/print-caixa/{id}', [CaixaController::class, 'printCaixa'])->name('print-caixa');
 
     Route::get('/print-retirada/{id}', [AluguelController::class, 'printRetirada'])->name('print-retirada');
-    
+
     Route::get('/print-checklist/{id}', [AluguelController::class, 'printChecklist'])->name('print-checklist');
 
     Route::get('/print-devolucao/{id}', [AluguelController::class, 'printDevolucao'])->name('print-devolucao');
+
+    Route::get('/print-orcamento/{id}', [OrcamentoController::class, 'printOrcamento'])->name('print-orcamento');
+
+    Route::get('/print-os/{id}', [OrdemServicoController::class, 'printOrdemServico'])->name('print-os');
 
 });
 

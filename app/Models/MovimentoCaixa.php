@@ -14,6 +14,8 @@ class MovimentoCaixa extends Model
     protected $fillable = [
         'caixa_id',
         'aluguel_id',
+        'orcamento_id',
+        'ordem_servico_id',
         'user_id',
         'descricao',
         'tipo',
@@ -51,6 +53,22 @@ class MovimentoCaixa extends Model
     public function aluguel(): BelongsTo
     {
         return $this->belongsTo(Aluguel::class, 'aluguel_id');
+    }
+
+    /**
+     * Um movimento pode pertencer a um orçamento
+     */
+    public function orcamento(): BelongsTo
+    {
+        return $this->belongsTo(Orcamento::class, 'orcamento_id');
+    }
+
+    /**
+     * Um movimento pode pertencer a uma ordem de serviço
+     */
+    public function ordemServico(): BelongsTo
+    {
+        return $this->belongsTo(OrdemServico::class, 'ordem_servico_id');
     }
 
     /**
