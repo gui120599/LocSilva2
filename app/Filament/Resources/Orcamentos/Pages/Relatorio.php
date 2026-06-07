@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Filament\Resources\Aluguels\Pages;
+namespace App\Filament\Resources\Orcamentos\Pages;
 
-use App\Filament\Resources\Aluguels\AluguelResource;
-use App\Models\Carreta;
+use App\Enums\StatusOrcamento;
+use App\Filament\Resources\Orcamentos\OrcamentoResource;
 use App\Models\Cliente;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -14,11 +14,11 @@ use Filament\Support\Exceptions\Halt;
 
 class Relatorio extends Page
 {
-    protected static string $resource = AluguelResource::class;
+    protected static string $resource = OrcamentoResource::class;
 
-    protected static ?string $title = 'Relatório de Aluguéis';
+    protected static ?string $title = 'Relatório de Orçamentos';
 
-    protected string $view = 'filament.resources.aluguels.pages.relatorio';
+    protected string $view = 'filament.resources.orcamentos.pages.relatorio';
 
     public ?array $data = [];
 
@@ -27,7 +27,7 @@ class Relatorio extends Page
         $this->form->fill([
             'data_inicio' => now()->startOfMonth()->format('Y-m-d'),
             'data_fim'    => now()->format('Y-m-d'),
-            'tipo_data'   => 'retirada',
+            'tipo_data'   => 'criacao',
         ]);
     }
 
@@ -54,28 +54,21 @@ class Relatorio extends Page
                         Select::make('tipo_data')
                             ->label('Tipo de Data')
                             ->options([
-                                'retirada'           => 'Data de Retirada',
-                                'devolucao_prevista' => 'Devolução Prevista',
-                                'devolucao_real'     => 'Devolução Real',
-                                'criacao'            => 'Data de Criação',
+                                'criacao'    => 'Data de Criação',
+                                'validade'   => 'Data de Validade',
                             ])
-                            ->default('retirada')
+                            ->default('criacao')
                             ->required(),
                     ]),
 
                 Section::make('Filtros Opcionais')
                     ->icon('heroicon-o-funnel')
-                    ->columns(3)
+                    ->columns(2)
                     ->collapsed()
                     ->schema([
                         Select::make('status')
                             ->label('Status')
-                            ->options([
-                                'ativo'      => 'Ativo',
-                                'finalizado' => 'Finalizado',
-                                'cancelado'  => 'Cancelado',
-                                'pendente'   => 'Pendente',
-                            ])
+                            ->options(StatusOrcamento::class)
                             ->placeholder('Todos'),
 
                         Select::make('cliente_id')
@@ -83,14 +76,6 @@ class Relatorio extends Page
                             ->options(fn() => Cliente::orderBy('nome')->pluck('nome', 'id'))
                             ->searchable()
                             ->placeholder('Todos os Clientes'),
-
-                        Select::make('carreta_id')
-                            ->label('Carreta')
-                            ->options(fn() => Carreta::orderBy('identificacao')
-                                ->get()
-                                ->mapWithKeys(fn($c) => [$c->id => "{$c->identificacao} — {$c->placa}"]))
-                            ->searchable()
-                            ->placeholder('Todas as Carretas'),
                     ]),
             ])
             ->statePath('data');
@@ -105,7 +90,7 @@ class Relatorio extends Page
         }
 
         $params = array_filter($data, fn($v) => $v !== null && $v !== '');
-        $url    = route('relatorios.gerar-alugueis', $params);
+        $url    = route('relatorios.gerar-orcamentos', $params);
 
         $this->dispatch('abrir-relatorio', url: $url);
     }

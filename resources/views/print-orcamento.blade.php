@@ -16,7 +16,8 @@
     <div class="p-1 max-w-6xl mx-auto ring-1 ring-gray-100/70">
 
         <!-- Header -->
-        <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-gray-100 pb-2 mb-2">
+        <header
+            class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-gray-100 pb-2 mb-2">
             <div class="space-y-1">
                 <h2 class="font-extrabold text-gray-800">
                     Orçamento <span class="text-primary-600">{{ $orcamento->numero }}</span>
@@ -24,12 +25,17 @@
                 <p class="text-sm text-gray-500">
                     Emitido em: {{ $orcamento->created_at->format('d/m/Y \à\s H:i') }}
                 </p>
-                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
+                <span
+                    class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
                     Status: {{ $orcamento->status->getLabel() }}
                 </span>
+                @if ($orcamento->data_validade)
+                    <p><strong>Válido até: </strong> {{ $orcamento->data_validade->format('d/m/Y') }}</p>
+                @endif
             </div>
             <div>
-                <img src="{{ asset('/logos/Logo LocSilva white.png') }}" alt="Logo LocSilva" class="h-14 mt-4 sm:mt-0 opacity-85">
+                <img src="{{ asset('/logos/Logo LocSilva white.png') }}" alt="Logo LocSilva"
+                    class="h-14 mt-4 sm:mt-0 opacity-85">
             </div>
         </header>
 
@@ -42,8 +48,9 @@
                     <x-heroicon-s-user class="w-4 h-4 mr-2 text-primary-500" /> Cliente
                 </h3>
                 <div class="space-y-1 text-[9px] text-gray-600">
-                    <p><strong>Nome: </strong> {{ $orcamento->nome_cliente ?? $orcamento->cliente?->nome ?? '—' }}</p>
-                    <p><strong>Telefone: </strong> {{ $orcamento->telefone_cliente ?? $orcamento->cliente?->telefone ?? '—' }}</p>
+                    <p><strong>Nome: </strong> {{ $orcamento->nome_cliente ?? ($orcamento->cliente?->nome ?? '—') }}</p>
+                    <p><strong>Telefone: </strong>
+                        {{ $orcamento->telefone_cliente ?? ($orcamento->cliente?->telefone ?? '—') }}</p>
                     @if ($orcamento->cliente)
                         <p><strong>CPF/CNPJ: </strong> {{ $orcamento->cliente->cpf_cnpj ?? '—' }}</p>
                         <p><strong>Endereço: </strong> {{ $orcamento->cliente->endereco ?? 'Não informado' }}</p>
@@ -73,61 +80,197 @@
                     <p><strong>Descrição: </strong> {{ $orcamento->veiculo_descricao ?? '—' }}</p>
                     <p><strong>Placa: </strong>
                         @if ($orcamento->veiculo_placa)
-                            <span class="font-mono bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded">{{ $orcamento->veiculo_placa }}</span>
+                            <span
+                                class="font-mono bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded">{{ $orcamento->veiculo_placa }}</span>
                         @else
                             —
                         @endif
                     </p>
-                    @if ($orcamento->data_validade)
-                        <p><strong>Válido até: </strong> {{ $orcamento->data_validade->format('d/m/Y') }}</p>
-                    @endif
                 </div>
             </div>
         </div>
 
         <!-- Itens do Orçamento -->
+        @php
+            $itensServico = $orcamento->itens->filter(
+                fn($i) => ($i->tipo instanceof \App\Enums\TipoItem ? $i->tipo->value : $i->tipo) === 'servico',
+            );
+            $itensProduto = $orcamento->itens->filter(
+                fn($i) => ($i->tipo instanceof \App\Enums\TipoItem ? $i->tipo->value : $i->tipo) === 'produto',
+            );
+            $itensOutros = $orcamento->itens->filter(
+                fn($i) => ($i->tipo instanceof \App\Enums\TipoItem ? $i->tipo->value : $i->tipo) === 'outros',
+            );
+        @endphp
+
         <div class="p-2 border border-gray-200 bg-white rounded-xl mb-2">
-            <h5 class="font-bold text-gray-800 mb-2 flex items-center">
+            <h5 class="font-bold text-gray-800 mb-3 flex items-center">
                 <x-heroicon-s-clipboard-document-list class="w-5 h-5 mr-2 text-primary-600" /> Itens do Orçamento
             </h5>
-            <table class="w-full text-[9px] border-collapse">
-                <thead>
-                    <tr class="bg-gray-50 text-gray-600">
-                        <th class="text-left px-2 py-1 border border-gray-100">Tipo</th>
-                        <th class="text-left px-2 py-1 border border-gray-100">Descrição</th>
-                        <th class="text-right px-2 py-1 border border-gray-100">Qtd.</th>
-                        <th class="text-right px-2 py-1 border border-gray-100">Valor Unit.</th>
-                        <th class="text-right px-2 py-1 border border-gray-100">Desconto</th>
-                        <th class="text-right px-2 py-1 border border-gray-100">Total</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse ($orcamento->itens as $item)
-                        <tr class="border-b border-gray-100">
-                            <td class="px-2 py-1 border border-gray-100 capitalize">
-                                {{ $item->tipo instanceof \App\Enums\TipoItem ? $item->tipo->getLabel() : $item->tipo }}
-                            </td>
-                            <td class="px-2 py-1 border border-gray-100">{{ $item->descricao }}</td>
-                            <td class="px-2 py-1 border border-gray-100 text-right">
-                                {{ number_format((float) $item->quantidade, 2, ',', '.') }}
-                            </td>
-                            <td class="px-2 py-1 border border-gray-100 text-right">
-                                R$ {{ number_format((float) $item->valor_unitario, 2, ',', '.') }}
-                            </td>
-                            <td class="px-2 py-1 border border-gray-100 text-right">
-                                R$ {{ number_format((float) ($item->valor_desconto ?? 0), 2, ',', '.') }}
-                            </td>
-                            <td class="px-2 py-1 border border-gray-100 text-right font-semibold text-green-700">
-                                R$ {{ number_format((float) $item->valor_total, 2, ',', '.') }}
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="6" class="px-2 py-2 text-center text-gray-400 italic">Nenhum item adicionado.</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+
+            @if ($orcamento->itens->isEmpty())
+                <p class="text-center text-gray-400 italic text-[9px] py-2">Nenhum item adicionado.</p>
+            @endif
+
+            @if ($itensServico->count())
+                <div class="mb-3">
+                    <h6 class="text-[9px] font-bold text-blue-700 uppercase tracking-wide mb-1 flex items-center gap-1">
+                        <x-heroicon-m-wrench-screwdriver class="w-3 h-3" /> Serviços
+                    </h6>
+                    <table class="w-full text-[9px] border-collapse">
+                        <thead>
+                            <tr class="bg-blue-50 text-gray-600">
+                                <th class="text-left px-2 py-1 border border-gray-100">Descrição</th>
+                                <th class="text-right px-2 py-1 border border-gray-100">Qtd.</th>
+                                <th class="text-right px-2 py-1 border border-gray-100">Valor Unit.</th>
+                                <th class="text-right px-2 py-1 border border-gray-100">Acréscimo</th>
+                                <th class="text-right px-2 py-1 border border-gray-100">Desconto</th>
+                                <th class="text-right px-2 py-1 border border-gray-100">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($itensServico as $item)
+                                <tr class="border-b border-gray-100">
+                                    <td class="px-2 py-1 border border-gray-100">{{ $item->descricao }}</td>
+                                    <td class="px-2 py-1 border border-gray-100 text-right">
+                                        {{ number_format((float) $item->quantidade, 2, ',', '.') }}</td>
+                                    <td class="px-2 py-1 border border-gray-100 text-right">R$
+                                        {{ number_format((float) $item->valor_unitario, 2, ',', '.') }}</td>
+                                    <td
+                                        class="px-2 py-1 border border-gray-100 text-right {{ (float) ($item->valor_acrescimo ?? 0) > 0 ? 'text-blue-700' : 'text-gray-400' }}">
+                                        R$ {{ number_format((float) ($item->valor_acrescimo ?? 0), 2, ',', '.') }}</td>
+                                    <td
+                                        class="px-2 py-1 border border-gray-100 text-right {{ (float) ($item->valor_desconto ?? 0) > 0 ? 'text-red-600' : 'text-gray-400' }}">
+                                        R$ {{ number_format((float) ($item->valor_desconto ?? 0), 2, ',', '.') }}</td>
+                                    <td
+                                        class="px-2 py-1 border border-gray-100 text-right font-semibold text-green-700">
+                                        R$ {{ number_format((float) $item->valor_total, 2, ',', '.') }}</td>
+                                </tr>
+                                @if ($item->observacoes)
+                                    <tr class="bg-gray-50/50">
+                                        <td colspan="6"
+                                            class="px-2 py-0.5 text-[8px] text-gray-500 italic border border-gray-100">
+                                            Obs: {{ $item->observacoes }}</td>
+                                    </tr>
+                                @endif
+                            @endforeach
+                            <tr class="bg-blue-50/50 font-semibold">
+                                <td colspan="5" class="px-2 py-1 border border-gray-100 text-right text-blue-700">
+                                    Subtotal Serviços:</td>
+                                <td class="px-2 py-1 border border-gray-100 text-right text-blue-700">R$
+                                    {{ number_format($itensServico->sum('valor_total'), 2, ',', '.') }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+
+            @if ($itensProduto->count())
+                <div class="mb-3">
+                    <h6
+                        class="text-[9px] font-bold text-green-700 uppercase tracking-wide mb-1 flex items-center gap-1">
+                        <x-heroicon-m-cube class="w-3 h-3" /> Produtos
+                    </h6>
+                    <table class="w-full text-[9px] border-collapse">
+                        <thead>
+                            <tr class="bg-green-50 text-gray-600">
+                                <th class="text-left px-2 py-1 border border-gray-100">Descrição</th>
+                                <th class="text-right px-2 py-1 border border-gray-100">Qtd.</th>
+                                <th class="text-right px-2 py-1 border border-gray-100">Valor Unit.</th>
+                                <th class="text-right px-2 py-1 border border-gray-100">Acréscimo</th>
+                                <th class="text-right px-2 py-1 border border-gray-100">Desconto</th>
+                                <th class="text-right px-2 py-1 border border-gray-100">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($itensProduto as $item)
+                                <tr class="border-b border-gray-100">
+                                    <td class="px-2 py-1 border border-gray-100">{{ $item->descricao }}</td>
+                                    <td class="px-2 py-1 border border-gray-100 text-right">
+                                        {{ number_format((float) $item->quantidade, 2, ',', '.') }}</td>
+                                    <td class="px-2 py-1 border border-gray-100 text-right">R$
+                                        {{ number_format((float) $item->valor_unitario, 2, ',', '.') }}</td>
+                                    <td
+                                        class="px-2 py-1 border border-gray-100 text-right {{ (float) ($item->valor_acrescimo ?? 0) > 0 ? 'text-blue-700' : 'text-gray-400' }}">
+                                        R$ {{ number_format((float) ($item->valor_acrescimo ?? 0), 2, ',', '.') }}</td>
+                                    <td
+                                        class="px-2 py-1 border border-gray-100 text-right {{ (float) ($item->valor_desconto ?? 0) > 0 ? 'text-red-600' : 'text-gray-400' }}">
+                                        R$ {{ number_format((float) ($item->valor_desconto ?? 0), 2, ',', '.') }}</td>
+                                    <td
+                                        class="px-2 py-1 border border-gray-100 text-right font-semibold text-green-700">
+                                        R$ {{ number_format((float) $item->valor_total, 2, ',', '.') }}</td>
+                                </tr>
+                                @if ($item->observacoes)
+                                    <tr class="bg-gray-50/50">
+                                        <td colspan="6"
+                                            class="px-2 py-0.5 text-[8px] text-gray-500 italic border border-gray-100">
+                                            Obs: {{ $item->observacoes }}</td>
+                                    </tr>
+                                @endif
+                            @endforeach
+                            <tr class="bg-green-50/50 font-semibold">
+                                <td colspan="5" class="px-2 py-1 border border-gray-100 text-right text-green-700">
+                                    Subtotal Produtos:</td>
+                                <td class="px-2 py-1 border border-gray-100 text-right text-green-700">R$
+                                    {{ number_format($itensProduto->sum('valor_total'), 2, ',', '.') }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+
+            @if ($itensOutros->count())
+                <div class="mb-1">
+                    <h6 class="text-[9px] font-bold text-gray-600 uppercase tracking-wide mb-1 flex items-center gap-1">
+                        <x-heroicon-m-ellipsis-horizontal-circle class="w-3 h-3" /> Outros
+                    </h6>
+                    <table class="w-full text-[9px] border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50 text-gray-600">
+                                <th class="text-left px-2 py-1 border border-gray-100">Descrição</th>
+                                <th class="text-right px-2 py-1 border border-gray-100">Qtd.</th>
+                                <th class="text-right px-2 py-1 border border-gray-100">Valor Unit.</th>
+                                <th class="text-right px-2 py-1 border border-gray-100">Acréscimo</th>
+                                <th class="text-right px-2 py-1 border border-gray-100">Desconto</th>
+                                <th class="text-right px-2 py-1 border border-gray-100">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($itensOutros as $item)
+                                <tr class="border-b border-gray-100">
+                                    <td class="px-2 py-1 border border-gray-100">{{ $item->descricao }}</td>
+                                    <td class="px-2 py-1 border border-gray-100 text-right">
+                                        {{ number_format((float) $item->quantidade, 2, ',', '.') }}</td>
+                                    <td class="px-2 py-1 border border-gray-100 text-right">R$
+                                        {{ number_format((float) $item->valor_unitario, 2, ',', '.') }}</td>
+                                    <td
+                                        class="px-2 py-1 border border-gray-100 text-right {{ (float) ($item->valor_acrescimo ?? 0) > 0 ? 'text-blue-700' : 'text-gray-400' }}">
+                                        R$ {{ number_format((float) ($item->valor_acrescimo ?? 0), 2, ',', '.') }}</td>
+                                    <td
+                                        class="px-2 py-1 border border-gray-100 text-right {{ (float) ($item->valor_desconto ?? 0) > 0 ? 'text-red-600' : 'text-gray-400' }}">
+                                        R$ {{ number_format((float) ($item->valor_desconto ?? 0), 2, ',', '.') }}</td>
+                                    <td
+                                        class="px-2 py-1 border border-gray-100 text-right font-semibold text-green-700">
+                                        R$ {{ number_format((float) $item->valor_total, 2, ',', '.') }}</td>
+                                </tr>
+                                @if ($item->observacoes)
+                                    <tr class="bg-gray-50/50">
+                                        <td colspan="6"
+                                            class="px-2 py-0.5 text-[8px] text-gray-500 italic border border-gray-100">
+                                            Obs: {{ $item->observacoes }}</td>
+                                    </tr>
+                                @endif
+                            @endforeach
+                            <tr class="bg-gray-100/60 font-semibold">
+                                <td colspan="5" class="px-2 py-1 border border-gray-100 text-right text-gray-600">
+                                    Subtotal Outros:</td>
+                                <td class="px-2 py-1 border border-gray-100 text-right text-gray-600">R$
+                                    {{ number_format($itensOutros->sum('valor_total'), 2, ',', '.') }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            @endif
         </div>
 
         <!-- Resumo Financeiro -->
@@ -136,7 +279,25 @@
                 <x-heroicon-s-currency-dollar class="w-5 h-5 mr-2 text-primary-600" /> Resumo Financeiro
             </h5>
             <dl class="space-y-1 text-[10px] max-w-xs ml-auto">
-                <div class="flex justify-between text-gray-700">
+                @if ($itensServico->count())
+                    <div class="flex justify-between text-blue-700">
+                        <dt>Serviços:</dt>
+                        <dd>R$ {{ number_format($itensServico->sum('valor_total'), 2, ',', '.') }}</dd>
+                    </div>
+                @endif
+                @if ($itensProduto->count())
+                    <div class="flex justify-between text-green-700">
+                        <dt>Produtos:</dt>
+                        <dd>R$ {{ number_format($itensProduto->sum('valor_total'), 2, ',', '.') }}</dd>
+                    </div>
+                @endif
+                @if ($itensOutros->count())
+                    <div class="flex justify-between text-gray-600">
+                        <dt>Outros:</dt>
+                        <dd>R$ {{ number_format($itensOutros->sum('valor_total'), 2, ',', '.') }}</dd>
+                    </div>
+                @endif
+                <div class="flex justify-between text-gray-700 pt-1 border-t border-gray-100">
                     <dt>Subtotal dos Itens:</dt>
                     <dd>R$ {{ number_format((float) ($orcamento->valor_subtotal ?? 0), 2, ',', '.') }}</dd>
                 </div>
@@ -150,7 +311,8 @@
                 </div>
                 <div class="flex justify-between font-bold text-xs pt-1 border-t border-gray-200">
                     <dt class="text-gray-800">VALOR TOTAL:</dt>
-                    <dd class="text-green-600">R$ {{ number_format((float) ($orcamento->valor_total ?? 0), 2, ',', '.') }}</dd>
+                    <dd class="text-green-600">R$
+                        {{ number_format((float) ($orcamento->valor_total ?? 0), 2, ',', '.') }}</dd>
                 </div>
             </dl>
         </div>
@@ -167,7 +329,9 @@
                             <span class="text-gray-600">
                                 {{ $pagamento->created_at->format('d/m/Y') }} —
                                 {{ $pagamento->metodoPagamento->nome ?? 'Método não especificado' }}
-                                @if ($pagamento->descricao) — {{ $pagamento->descricao }} @endif
+                                @if ($pagamento->descricao)
+                                    — {{ $pagamento->descricao }}
+                                @endif
                             </span>
                             <span class="font-semibold text-green-700">
                                 R$ {{ number_format((float) $pagamento->valor_total_movimento, 2, ',', '.') }}
@@ -193,7 +357,7 @@
             <div>
                 <div class="border-b border-gray-400 h-16 w-3/4 mx-auto mb-2"></div>
                 <p class="font-semibold text-gray-800 text-sm">
-                    {{ $orcamento->nome_cliente ?? $orcamento->cliente?->nome ?? 'Cliente' }}
+                    {{ $orcamento->nome_cliente ?? ($orcamento->cliente?->nome ?? 'Cliente') }}
                 </p>
                 <p class="text-xs text-gray-500">Contratante</p>
             </div>
@@ -215,4 +379,5 @@
         window.print();
     </script>
 </body>
+
 </html>

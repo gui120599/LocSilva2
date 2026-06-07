@@ -1,10 +1,11 @@
 <?php
 
-namespace App\Filament\Resources\Aluguels\Pages;
+namespace App\Filament\Resources\OrdensServicos\Pages;
 
-use App\Filament\Resources\Aluguels\AluguelResource;
-use App\Models\Carreta;
+use App\Enums\StatusOrdemServico;
+use App\Filament\Resources\OrdensServicos\OrdemServicoResource;
 use App\Models\Cliente;
+use App\Models\User;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Resources\Pages\Page;
@@ -14,11 +15,11 @@ use Filament\Support\Exceptions\Halt;
 
 class Relatorio extends Page
 {
-    protected static string $resource = AluguelResource::class;
+    protected static string $resource = OrdemServicoResource::class;
 
-    protected static ?string $title = 'Relatório de Aluguéis';
+    protected static ?string $title = 'Relatório de Ordens de Serviço';
 
-    protected string $view = 'filament.resources.aluguels.pages.relatorio';
+    protected string $view = 'filament.resources.ordensservicos.pages.relatorio';
 
     public ?array $data = [];
 
@@ -27,7 +28,7 @@ class Relatorio extends Page
         $this->form->fill([
             'data_inicio' => now()->startOfMonth()->format('Y-m-d'),
             'data_fim'    => now()->format('Y-m-d'),
-            'tipo_data'   => 'retirada',
+            'tipo_data'   => 'abertura',
         ]);
     }
 
@@ -54,12 +55,12 @@ class Relatorio extends Page
                         Select::make('tipo_data')
                             ->label('Tipo de Data')
                             ->options([
-                                'retirada'           => 'Data de Retirada',
-                                'devolucao_prevista' => 'Devolução Prevista',
-                                'devolucao_real'     => 'Devolução Real',
-                                'criacao'            => 'Data de Criação',
+                                'abertura'  => 'Data de Abertura',
+                                'previsao'  => 'Previsão de Conclusão',
+                                'conclusao' => 'Data de Conclusão',
+                                'criacao'   => 'Data de Criação',
                             ])
-                            ->default('retirada')
+                            ->default('abertura')
                             ->required(),
                     ]),
 
@@ -70,12 +71,7 @@ class Relatorio extends Page
                     ->schema([
                         Select::make('status')
                             ->label('Status')
-                            ->options([
-                                'ativo'      => 'Ativo',
-                                'finalizado' => 'Finalizado',
-                                'cancelado'  => 'Cancelado',
-                                'pendente'   => 'Pendente',
-                            ])
+                            ->options(StatusOrdemServico::class)
                             ->placeholder('Todos'),
 
                         Select::make('cliente_id')
@@ -84,13 +80,11 @@ class Relatorio extends Page
                             ->searchable()
                             ->placeholder('Todos os Clientes'),
 
-                        Select::make('carreta_id')
-                            ->label('Carreta')
-                            ->options(fn() => Carreta::orderBy('identificacao')
-                                ->get()
-                                ->mapWithKeys(fn($c) => [$c->id => "{$c->identificacao} — {$c->placa}"]))
+                        Select::make('tecnico_id')
+                            ->label('Técnico')
+                            ->options(fn() => User::orderBy('name')->pluck('name', 'id'))
                             ->searchable()
-                            ->placeholder('Todas as Carretas'),
+                            ->placeholder('Todos os Técnicos'),
                     ]),
             ])
             ->statePath('data');
@@ -105,7 +99,7 @@ class Relatorio extends Page
         }
 
         $params = array_filter($data, fn($v) => $v !== null && $v !== '');
-        $url    = route('relatorios.gerar-alugueis', $params);
+        $url    = route('relatorios.gerar-ordensservicos', $params);
 
         $this->dispatch('abrir-relatorio', url: $url);
     }

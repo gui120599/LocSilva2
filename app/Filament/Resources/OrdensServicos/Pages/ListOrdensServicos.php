@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\OrdensServicos\Pages;
 
 use App\Filament\Resources\OrdensServicos\OrdemServicoResource;
+use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 
@@ -14,6 +15,10 @@ class ListOrdensServicos extends ListRecords
     {
         return [
             CreateAction::make(),
+            Action::make('relatorio')
+                ->label('Relatório')
+                ->icon('heroicon-o-document-text')
+                ->url(OrdemServicoResource::getUrl('relatorio')),
         ];
     }
 }

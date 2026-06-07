@@ -50,9 +50,10 @@ class OrcamentoResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => ListOrcamentos::route('/'),
-            'create' => CreateOrcamento::route('/create'),
-            'edit'   => EditOrcamento::route('/{record}/edit'),
+            'index'     => ListOrcamentos::route('/'),
+            'create'    => CreateOrcamento::route('/create'),
+            'edit'      => EditOrcamento::route('/{record}/edit'),
+            'relatorio' => Pages\Relatorio::route('/relatorio'),
         ];
     }
 

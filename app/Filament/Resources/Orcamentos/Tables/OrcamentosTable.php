@@ -11,11 +11,19 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\RestoreAction;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\FiltersLayout;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Leandrocfe\FilamentPtbrFormFields\Document;
 
 class OrcamentosTable
 {
@@ -79,11 +87,131 @@ class OrcamentosTable
             ->defaultSort('id', 'desc')
             ->filters([
                 TrashedFilter::make(),
+
                 SelectFilter::make('status')
                     ->label('Status')
                     ->options(StatusOrcamento::class)
                     ->multiple(),
+
+                Filter::make('numero')
+                    ->label('Número')
+                    ->schema([
+                        TextInput::make('numero')
+                            ->label('Nº do Orçamento')
+                            ->placeholder('Ex: ORC-2024-0001'),
+                    ])
+                    ->query(fn(Builder $query, array $data): Builder =>
+                        $query->when($data['numero'] ?? null, fn($q, $v) => $q->where('numero', 'like', "%{$v}%"))
+                    ),
+
+                Filter::make('data_validade')
+                    ->label('Data de Validade')
+                    ->columns(2)
+                    ->columnSpanFull()
+                    ->schema([
+                        DatePicker::make('data_validade_de')->label('Válido até (De)'),
+                        DatePicker::make('data_validade_ate')->label('Válido até (Até)'),
+                    ])
+                    ->query(fn(Builder $query, array $data): Builder =>
+                        $query
+                            ->when($data['data_validade_de'] ?? null, fn($q, $d) => $q->whereDate('data_validade', '>=', $d))
+                            ->when($data['data_validade_ate'] ?? null, fn($q, $d) => $q->whereDate('data_validade', '<=', $d))
+                    ),
+
+                Filter::make('data_criacao')
+                    ->label('Data de Criação')
+                    ->columns(2)
+                    ->columnSpanFull()
+                    ->schema([
+                        DatePicker::make('data_criacao_de')->label('Criado em (De)'),
+                        DatePicker::make('data_criacao_ate')->label('Criado em (Até)'),
+                    ])
+                    ->query(fn(Builder $query, array $data): Builder =>
+                        $query
+                            ->when($data['data_criacao_de'] ?? null, fn($q, $d) => $q->whereDate('created_at', '>=', $d))
+                            ->when($data['data_criacao_ate'] ?? null, fn($q, $d) => $q->whereDate('created_at', '<=', $d))
+                    ),
+
+                Filter::make('cliente')
+                    ->label('Cliente')
+                    ->schema([
+                        Grid::make()
+                            ->columns(2)
+                            ->components([
+                                TextInput::make('cliente_nome')
+                                    ->label('Nome do Cliente')
+                                    ->placeholder('Digite o nome do cliente'),
+
+                                Document::make('cliente_cpf_cnpj')
+                                    ->label('CPF/CNPJ')
+                                    ->dynamic()
+                                    ->placeholder('Digite o CPF ou CNPJ'),
+                            ]),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when($data['cliente_nome'] ?? null, function ($q, $v) {
+                                $q->where(function ($q) use ($v) {
+                                    $q->whereHas('cliente', fn($q) => $q->where('nome', 'like', "%{$v}%"))
+                                      ->orWhere('nome_cliente', 'like', "%{$v}%");
+                                });
+                            })
+                            ->when(preg_replace('/\D/', '', $data['cliente_cpf_cnpj'] ?? '') ?: null, function ($q, $v) {
+                                $q->whereHas('cliente', fn($q) => $q->where('cpf_cnpj', 'like', "%{$v}%"));
+                            });
+                    }),
+
+                Filter::make('veiculo')
+                    ->label('Veículo')
+                    ->schema([
+                        Grid::make()
+                            ->columns(2)
+                            ->components([
+                                TextInput::make('veiculo_descricao')
+                                    ->label('Descrição do Veículo')
+                                    ->placeholder('Ex: Carreta, Caminhão...'),
+
+                                TextInput::make('veiculo_placa')
+                                    ->label('Placa')
+                                    ->placeholder('ABC-1234'),
+                            ]),
+                    ])
+                    ->query(fn(Builder $query, array $data): Builder =>
+                        $query
+                            ->when($data['veiculo_descricao'] ?? null, fn($q, $v) => $q->where('veiculo_descricao', 'like', "%{$v}%"))
+                            ->when($data['veiculo_placa'] ?? null, fn($q, $v) => $q->where('veiculo_placa', 'like', "%{$v}%"))
+                    ),
+
+            ], layout: FiltersLayout::AboveContentCollapsible)
+            ->filtersFormColumns(4)
+            ->filtersFormSchema(fn(array $filters): array => [
+                Section::make('Orçamento')
+                    ->collapsed()
+                    ->columnSpanFull()
+                    ->columns(4)
+                    ->schema([
+                        $filters['trashed']       ?? null,
+                        $filters['numero']        ?? null,
+                        $filters['status']        ?? null,
+                        $filters['data_validade'] ?? null,
+                        $filters['data_criacao']  ?? null,
+                    ]),
+
+                Section::make('Cliente')
+                    ->collapsed()
+                    ->columnSpanFull()
+                    ->schema([
+                        $filters['cliente'] ?? null,
+                    ]),
+
+                Section::make('Veículo')
+                    ->collapsed()
+                    ->columnSpanFull()
+                    ->schema([
+                        $filters['veiculo'] ?? null,
+                    ]),
             ])
+            ->deferFilters(false)
             ->recordActions([
                 Action::make('aprovar')
                     ->label('Aprovar')

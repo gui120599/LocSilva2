@@ -153,13 +153,20 @@ class OrdemServico extends Model
     }
 
     /**
-     * Conclui a OS
+     * Conclui a OS — se houver saldo restante, fica Pendente; caso contrário, Concluída.
      */
     public function concluir(): void
     {
+        $totalPago  = (float) $this->movimentos()->where('tipo', 'entrada')->sum('valor_total_movimento');
+        $totalOS    = (float) $this->valor_total;
+        $saldo      = max(0, $totalOS - $totalPago);
+        $novoStatus = $saldo <= 0.009 ? StatusOrdemServico::Concluida : StatusOrdemServico::Pendente;
+
         $this->update([
-            'status'         => StatusOrdemServico::Concluida,
+            'status'         => $novoStatus,
             'data_conclusao' => now(),
+            'valor_pago'     => $totalPago,
+            'valor_saldo'    => $saldo,
         ]);
     }
 

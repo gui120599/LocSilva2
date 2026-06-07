@@ -79,6 +79,7 @@ class OrcamentoForm
                                     TextInput::make('veiculo_descricao')
                                         ->label('Descrição do Veículo')
                                         ->required()
+                                        ->default('Carreta')
                                         ->columnSpan(1)
                                         ->placeholder('Ex: Reboque, Carreta Baú, Tanque...')
                                         ->validationMessages([
@@ -114,7 +115,9 @@ class OrcamentoForm
                                         : '';
                                     return $descricao ? $descricao . $valor : 'Novo Item';
                                 })
-                                ->afterStateUpdated(fn(Get $get, Set $set) => self::recalcularTotais($get, $set))
+                                ->afterStateUpdated(function (Get $get, Set $set) {
+                                    self::recalcularTotais($get, $set);
+                                })
                                 ->schema([
                                     ToggleButtons::make('tipo')
                                         ->label('Tipo')
@@ -244,10 +247,7 @@ class OrcamentoForm
                                         ->label('Acréscimo')
                                         ->default('0,00')
                                         ->live(true)
-                                        ->readOnly(fn(Get $get): bool => self::normalizeMoney($get('../../_total_acrescimo_itens') ?? '0') > 0)
-                                        ->hint(fn(Get $get): ?string => self::normalizeMoney($get('../../valor_acrescimo') ?? '0') > 0 ? 'Definido pelo global' : null)
-                                        ->hintIcon(fn(Get $get): ?string => self::normalizeMoney($get('../../valor_acrescimo') ?? '0') > 0 ? 'heroicon-o-lock-closed' : null)
-                                        ->hintColor('warning')
+                                        ->dehydrated()
                                         ->columnSpan(1)
                                         ->afterStateUpdated(fn(Get $get, Set $set) => self::calcularValorTotalItem($get, $set))
                                         ->extraInputAttributes([
@@ -258,11 +258,7 @@ class OrcamentoForm
                                         ->label('Desconto')
                                         ->default('0,00')
                                         ->live(true)
-                                        ->readOnly(fn(Get $get): bool => self::normalizeMoney($get('../../valor_desconto') ?? '0') > 0)
-                                        ->hint(fn(Get $get): ?string => self::normalizeMoney($get('../../valor_desconto') ?? '0') > 0 ? 'Definido pelo global' : null)
-                                        ->hintIcon(fn(Get $get): ?string => self::normalizeMoney($get('../../valor_desconto') ?? '0') > 0 ? 'heroicon-o-lock-closed' : null)
-                                        ->hintColor('warning')
-                                        ->columnSpan(1)
+                                        ->dehydrated()->columnSpan(1)
                                         ->afterStateUpdated(fn(Get $get, Set $set) => self::calcularValorTotalItem($get, $set))
                                         ->extraInputAttributes([
                                             'class' => 'text-start',
@@ -299,39 +295,14 @@ class OrcamentoForm
                                     Money::make('valor_acrescimo')
                                         ->label('(+) Acréscimos')
                                         ->default('0,00')
-                                        ->live(true)
-                                        ->readOnly(fn(Get $get): bool =>
-                                            self::normalizeMoney($get('_total_acrescimo_itens') ?? '0') > 0
-                                        )
-                                        ->helperText(fn(Get $get): string =>
-                                            self::normalizeMoney($get('_total_acrescimo_itens') ?? '0') > 0 &&
-                                            self::normalizeMoney($get('valor_acrescimo') ?? '0') <= 0
-                                                ? 'Bloqueado — itens possuem acréscimo próprio. Zere os itens para usar o campo global.'
-                                                : 'Distribuído igualmente entre os itens ao confirmar.'
-                                        )
-                                        ->afterStateUpdated(function (Get $get, Set $set) {
-                                            self::distribuirAcrescimoAosItens($get, $set);
-                                            self::recalcularTotais($get, $set);
-                                        }),
+                                        ->readOnly()
+                                        ->dehydrated(),
 
                                     Money::make('valor_desconto')
                                         ->label('(-) Descontos')
                                         ->default('0,00')
-                                        ->live(true)
-                                        ->readOnly(fn(Get $get): bool =>
-                                            self::normalizeMoney($get('_total_desconto_itens') ?? '0') > 0 &&
-                                            self::normalizeMoney($get('valor_desconto') ?? '0') <= 0
-                                        )
-                                        ->helperText(fn(Get $get): string =>
-                                            self::normalizeMoney($get('_total_desconto_itens') ?? '0') > 0 &&
-                                            self::normalizeMoney($get('valor_desconto') ?? '0') <= 0
-                                                ? 'Bloqueado — itens possuem desconto próprio. Zere os itens para usar o campo global.'
-                                                : 'Distribuído igualmente entre os itens ao confirmar.'
-                                        )
-                                        ->afterStateUpdated(function (Get $get, Set $set) {
-                                            self::distribuirDescontoAosItens($get, $set);
-                                            self::recalcularTotais($get, $set);
-                                        }),
+                                        ->readOnly()
+                                        ->dehydrated(),
 
                                     Money::make('valor_total')
                                         ->label('Valor Total')
@@ -384,14 +355,6 @@ class OrcamentoForm
 
                             Hidden::make('user_id')
                                 ->default(fn() => filament()->auth()->id()),
-
-                            TextInput::make('_total_acrescimo_itens')
-                                ->default('0,00')
-                                ->dehydrated(false),
-
-                            TextInput::make('_total_desconto_itens')
-                                ->default('0,00')
-                                ->dehydrated(false),
                         ]),
                 ]),
             ]);
@@ -412,158 +375,34 @@ class OrcamentoForm
         self::recalcularTotaisFromItem($get, $set);
     }
 
-    // Chamado a partir do contexto do Repeater (add/remove de itens).
     protected static function recalcularTotais(Get $get, Set $set): void
     {
         $itens = $get('itens') ?? [];
 
-        // Subtotal bruto: só quantidade × valor_unitário.
-        // Os descontos por item são exibição de referência para o gestor;
-        // o desconto global é aplicado uma única vez no total geral,
-        // evitando dupla contagem quando o desconto global foi distribuído aos itens.
-        $subtotal = collect($itens)->sum(function ($item) {
-            $qtd  = (float) ($item['quantidade'] ?? 1);
-            $unit = self::normalizeMoney($item['valor_unitario'] ?? '0,00');
+        $subtotal  = collect($itens)->sum(fn($item) => (float) ($item['quantidade'] ?? 1) * self::normalizeMoney($item['valor_unitario'] ?? '0,00'));
+        $acrescimo = collect($itens)->sum(fn($item) => self::normalizeMoney($item['valor_acrescimo'] ?? '0,00'));
+        $desconto  = collect($itens)->sum(fn($item) => self::normalizeMoney($item['valor_desconto']  ?? '0,00'));
+        $total     = $subtotal + $acrescimo - $desconto;
 
-            return $qtd * $unit;
-        });
-
-        $acrescimo = collect($itens)->sum(function ($item) {
-            $acres = self::normalizeMoney($item['valor_acrescimo'] ?? '0,00');
-            return $acres;
-        });
-        $desconto = collect($itens)->sum(function ($item) {
-            $desc = self::normalizeMoney($item['valor_desconto'] ?? '0,00');
-            return $desc;
-        });
-
-        $total = $subtotal + $acrescimo - $desconto;
-
-        $set('valor_subtotal',           number_format($subtotal,   2, ',', '.'));
-        $set('valor_acrescimo',          number_format($acrescimo,  2, ',', '.'));
-        $set('valor_desconto',           number_format($desconto,   2, ',', '.'));
-        $set('valor_total',              number_format(max(0, $total), 2, ',', '.'));
-        // Alimenta os hidden fields que controlam o readOnly dos campos globais
-        $set('_total_acrescimo_itens',   number_format($acrescimo,  2, ',', '.'));
-        $set('_total_desconto_itens',    number_format($desconto,   2, ',', '.'));
+        $set('valor_subtotal', number_format($subtotal,      2, ',', '.'));
+        $set('valor_acrescimo', number_format($acrescimo,    2, ',', '.'));
+        $set('valor_desconto',  number_format($desconto,     2, ',', '.'));
+        $set('valor_total',     number_format(max(0, $total), 2, ',', '.'));
     }
 
-    // Chamado de dentro de um item do Repeater — usa "../../" para alcançar o estado raiz.
     protected static function recalcularTotaisFromItem(Get $get, Set $set): void
     {
         $itens = $get('../../itens') ?? [];
 
         $subtotal  = collect($itens)->sum(fn($item) => (float) ($item['quantidade'] ?? 1) * self::normalizeMoney($item['valor_unitario'] ?? '0,00'));
         $acrescimo = collect($itens)->sum(fn($item) => self::normalizeMoney($item['valor_acrescimo'] ?? '0,00'));
-        $desconto  = collect($itens)->sum(fn($item) => self::normalizeMoney($item['valor_desconto'] ?? '0,00'));
+        $desconto  = collect($itens)->sum(fn($item) => self::normalizeMoney($item['valor_desconto']  ?? '0,00'));
+        $total     = $subtotal + $acrescimo - $desconto;
 
-        $total = $subtotal + $acrescimo - $desconto;
-
-        $set('../../valor_subtotal',          number_format($subtotal,       2, ',', '.'));
-        $set('../../valor_acrescimo',         number_format($acrescimo,      2, ',', '.'));
-        $set('../../valor_desconto',          number_format($desconto,       2, ',', '.'));
-        $set('../../valor_total',             number_format(max(0, $total),  2, ',', '.'));
-        // Mantém os hidden fields sincronizados a partir do contexto do item
-        $set('../../_total_acrescimo_itens',  number_format($acrescimo,      2, ',', '.'));
-        $set('../../_total_desconto_itens',   number_format($desconto,       2, ',', '.'));
-    }
-
-    protected static function algumItemTemDesconto(Get $get): bool
-    {
-        return collect($get('itens') ?? [])->contains(
-            fn($item) => self::normalizeMoney($item['valor_desconto'] ?? '0,00') > 0
-        );
-    }
-
-    protected static function algumItemTemAcrescimo(Get $get): bool
-    {
-        return collect($get('itens') ?? [])->contains(
-            fn($item) => self::normalizeMoney($item['valor_acrescimo'] ?? '0,00') > 0
-        );
-    }
-
-    protected static function distribuirDescontoAosItens(Get $get, Set $set): void
-    {
-        $globalDesconto = self::normalizeMoney($get('valor_desconto') ?? '0,00');
-        $itens = $get('itens') ?? [];
-
-        if (empty($itens)) {
-            return;
-        }
-
-        if ($globalDesconto <= 0) {
-            foreach ($itens as &$item) {
-                $bruto = (float) ($item['quantidade'] ?? 1) * self::normalizeMoney($item['valor_unitario'] ?? '0,00');
-                $acr   = self::normalizeMoney($item['valor_acrescimo'] ?? '0,00');
-                $item['valor_desconto'] = '0,00';
-                $item['valor_total']    = number_format(max(0, $bruto + $acr), 2, ',', '.');
-            }
-            unset($item);
-            $set('itens', $itens);
-            return;
-        }
-
-        $count = count($itens);
-        $parcela = round($globalDesconto / $count, 2);
-        $somaAplicada = 0;
-        $indice = 0;
-
-        foreach ($itens as &$item) {
-            $indice++;
-            $parcelaItem   = $indice === $count ? round($globalDesconto - $somaAplicada, 2) : $parcela;
-            $somaAplicada += $parcelaItem;
-
-            $bruto = (float) ($item['quantidade'] ?? 1) * self::normalizeMoney($item['valor_unitario'] ?? '0,00');
-            $acr   = self::normalizeMoney($item['valor_acrescimo'] ?? '0,00');
-
-            $item['valor_desconto'] = number_format($parcelaItem, 2, ',', '.');
-            $item['valor_total']    = number_format(max(0, $bruto + $acr - $parcelaItem), 2, ',', '.');
-        }
-        unset($item);
-
-        $set('itens', $itens);
-    }
-
-    protected static function distribuirAcrescimoAosItens(Get $get, Set $set): void
-    {
-        $globalAcrescimo = self::normalizeMoney($get('valor_acrescimo') ?? '0,00');
-        $itens = $get('itens') ?? [];
-
-        if (empty($itens)) {
-            return;
-        }
-
-        if ($globalAcrescimo <= 0) {
-            foreach ($itens as &$item) {
-                $bruto = (float) ($item['quantidade'] ?? 1) * self::normalizeMoney($item['valor_unitario'] ?? '0,00');
-                $desc  = self::normalizeMoney($item['valor_desconto'] ?? '0,00');
-                $item['valor_acrescimo'] = '0,00';
-                $item['valor_total']     = number_format(max(0, $bruto - $desc), 2, ',', '.');
-            }
-            unset($item);
-            $set('itens', $itens);
-            return;
-        }
-
-        $count = count($itens);
-        $parcela = round($globalAcrescimo / $count, 2);
-        $somaAplicada = 0;
-        $indice = 0;
-
-        foreach ($itens as &$item) {
-            $indice++;
-            $parcelaItem   = $indice === $count ? round($globalAcrescimo - $somaAplicada, 2) : $parcela;
-            $somaAplicada += $parcelaItem;
-
-            $bruto = (float) ($item['quantidade'] ?? 1) * self::normalizeMoney($item['valor_unitario'] ?? '0,00');
-            $desc  = self::normalizeMoney($item['valor_desconto'] ?? '0,00');
-
-            $item['valor_acrescimo'] = number_format($parcelaItem, 2, ',', '.');
-            $item['valor_total']     = number_format(max(0, $bruto + $parcelaItem - $desc), 2, ',', '.');
-        }
-        unset($item);
-
-        $set('itens', $itens);
+        $set('../../valor_subtotal', number_format($subtotal,      2, ',', '.'));
+        $set('../../valor_acrescimo', number_format($acrescimo,    2, ',', '.'));
+        $set('../../valor_desconto',  number_format($desconto,     2, ',', '.'));
+        $set('../../valor_total',     number_format(max(0, $total), 2, ',', '.'));
     }
 
     protected static function normalizeMoney(mixed $value): float

@@ -126,55 +126,152 @@
         </div>
 
         <!-- Itens da OS -->
+        @php
+            $itensServico = $os->itens->filter(fn($i) => (($i->tipo instanceof \App\Enums\TipoItem ? $i->tipo->value : $i->tipo) === 'servico'));
+            $itensProduto = $os->itens->filter(fn($i) => (($i->tipo instanceof \App\Enums\TipoItem ? $i->tipo->value : $i->tipo) === 'produto'));
+            $itensOutros  = $os->itens->filter(fn($i) => (($i->tipo instanceof \App\Enums\TipoItem ? $i->tipo->value : $i->tipo) === 'outros'));
+        @endphp
+
         <div class="p-2 border border-gray-200 bg-white rounded-xl mb-2">
-            <h5 class="font-bold text-gray-800 mb-2 flex items-center">
+            <h5 class="font-bold text-gray-800 mb-3 flex items-center">
                 <x-heroicon-s-clipboard-document-list class="w-5 h-5 mr-2 text-primary-600" /> Itens da Ordem de Serviço
             </h5>
-            <table class="w-full text-[9px] border-collapse">
-                <thead>
-                    <tr class="bg-gray-50 text-gray-600">
-                        <th class="text-left px-2 py-1 border border-gray-100">Tipo</th>
-                        <th class="text-left px-2 py-1 border border-gray-100">Descrição</th>
-                        <th class="text-right px-2 py-1 border border-gray-100">Qtd.</th>
-                        <th class="text-right px-2 py-1 border border-gray-100">Valor Unit.</th>
-                        <th class="text-right px-2 py-1 border border-gray-100">Desconto</th>
-                        <th class="text-right px-2 py-1 border border-gray-100">Total</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse ($os->itens as $item)
-                        <tr class="border-b border-gray-100">
-                            <td class="px-2 py-1 border border-gray-100 capitalize">
-                                {{ $item->tipo instanceof \App\Enums\TipoItem ? $item->tipo->getLabel() : $item->tipo }}
-                            </td>
-                            <td class="px-2 py-1 border border-gray-100">{{ $item->descricao }}</td>
-                            <td class="px-2 py-1 border border-gray-100 text-right">
-                                {{ number_format((float) $item->quantidade, 2, ',', '.') }}
-                            </td>
-                            <td class="px-2 py-1 border border-gray-100 text-right">
-                                R$ {{ number_format((float) $item->valor_unitario, 2, ',', '.') }}
-                            </td>
-                            <td class="px-2 py-1 border border-gray-100 text-right">
-                                R$ {{ number_format((float) ($item->valor_desconto ?? 0), 2, ',', '.') }}
-                            </td>
-                            <td class="px-2 py-1 border border-gray-100 text-right font-semibold text-green-700">
-                                R$ {{ number_format((float) $item->valor_total, 2, ',', '.') }}
-                            </td>
-                        </tr>
-                        @if ($item->observacoes)
-                            <tr class="bg-gray-50/50">
-                                <td colspan="6" class="px-2 py-0.5 text-[8px] text-gray-500 italic border border-gray-100">
-                                    Obs: {{ $item->observacoes }}
-                                </td>
+
+            @if ($os->itens->isEmpty())
+                <p class="text-center text-gray-400 italic text-[9px] py-2">Nenhum item adicionado.</p>
+            @endif
+
+            @if ($itensServico->count())
+                <div class="mb-3">
+                    <h6 class="text-[9px] font-bold text-blue-700 uppercase tracking-wide mb-1 flex items-center gap-1">
+                        <x-heroicon-m-wrench-screwdriver class="w-3 h-3" /> Serviços
+                    </h6>
+                    <table class="w-full text-[9px] border-collapse">
+                        <thead>
+                            <tr class="bg-blue-50 text-gray-600">
+                                <th class="text-left px-2 py-1 border border-gray-100">Descrição</th>
+                                <th class="text-right px-2 py-1 border border-gray-100">Qtd.</th>
+                                <th class="text-right px-2 py-1 border border-gray-100">Valor Unit.</th>
+                                <th class="text-right px-2 py-1 border border-gray-100">Acréscimo</th>
+                                <th class="text-right px-2 py-1 border border-gray-100">Desconto</th>
+                                <th class="text-right px-2 py-1 border border-gray-100">Total</th>
                             </tr>
-                        @endif
-                    @empty
-                        <tr>
-                            <td colspan="6" class="px-2 py-2 text-center text-gray-400 italic">Nenhum item adicionado.</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+                        </thead>
+                        <tbody>
+                            @foreach ($itensServico as $item)
+                                <tr class="border-b border-gray-100">
+                                    <td class="px-2 py-1 border border-gray-100">
+                                        {{ $item->descricao }}
+                                        @if ($item->concluido) <span class="ml-1 text-green-600 font-bold">✓</span> @endif
+                                    </td>
+                                    <td class="px-2 py-1 border border-gray-100 text-right">{{ number_format((float) $item->quantidade, 2, ',', '.') }}</td>
+                                    <td class="px-2 py-1 border border-gray-100 text-right">R$ {{ number_format((float) $item->valor_unitario, 2, ',', '.') }}</td>
+                                    <td class="px-2 py-1 border border-gray-100 text-right {{ (float)($item->valor_acrescimo ?? 0) > 0 ? 'text-blue-700' : 'text-gray-400' }}">R$ {{ number_format((float) ($item->valor_acrescimo ?? 0), 2, ',', '.') }}</td>
+                                    <td class="px-2 py-1 border border-gray-100 text-right {{ (float)($item->valor_desconto ?? 0) > 0 ? 'text-red-600' : 'text-gray-400' }}">R$ {{ number_format((float) ($item->valor_desconto ?? 0), 2, ',', '.') }}</td>
+                                    <td class="px-2 py-1 border border-gray-100 text-right font-semibold text-green-700">R$ {{ number_format((float) $item->valor_total, 2, ',', '.') }}</td>
+                                </tr>
+                                @if ($item->observacoes)
+                                    <tr class="bg-gray-50/50">
+                                        <td colspan="6" class="px-2 py-0.5 text-[8px] text-gray-500 italic border border-gray-100">Obs: {{ $item->observacoes }}</td>
+                                    </tr>
+                                @endif
+                            @endforeach
+                            <tr class="bg-blue-50/50 font-semibold">
+                                <td colspan="5" class="px-2 py-1 border border-gray-100 text-right text-blue-700">Subtotal Serviços:</td>
+                                <td class="px-2 py-1 border border-gray-100 text-right text-blue-700">R$ {{ number_format($itensServico->sum('valor_total'), 2, ',', '.') }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+
+            @if ($itensProduto->count())
+                <div class="mb-3">
+                    <h6 class="text-[9px] font-bold text-green-700 uppercase tracking-wide mb-1 flex items-center gap-1">
+                        <x-heroicon-m-cube class="w-3 h-3" /> Produtos
+                    </h6>
+                    <table class="w-full text-[9px] border-collapse">
+                        <thead>
+                            <tr class="bg-green-50 text-gray-600">
+                                <th class="text-left px-2 py-1 border border-gray-100">Descrição</th>
+                                <th class="text-right px-2 py-1 border border-gray-100">Qtd.</th>
+                                <th class="text-right px-2 py-1 border border-gray-100">Valor Unit.</th>
+                                <th class="text-right px-2 py-1 border border-gray-100">Acréscimo</th>
+                                <th class="text-right px-2 py-1 border border-gray-100">Desconto</th>
+                                <th class="text-right px-2 py-1 border border-gray-100">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($itensProduto as $item)
+                                <tr class="border-b border-gray-100">
+                                    <td class="px-2 py-1 border border-gray-100">
+                                        {{ $item->descricao }}
+                                        @if ($item->concluido) <span class="ml-1 text-green-600 font-bold">✓</span> @endif
+                                    </td>
+                                    <td class="px-2 py-1 border border-gray-100 text-right">{{ number_format((float) $item->quantidade, 2, ',', '.') }}</td>
+                                    <td class="px-2 py-1 border border-gray-100 text-right">R$ {{ number_format((float) $item->valor_unitario, 2, ',', '.') }}</td>
+                                    <td class="px-2 py-1 border border-gray-100 text-right {{ (float)($item->valor_acrescimo ?? 0) > 0 ? 'text-blue-700' : 'text-gray-400' }}">R$ {{ number_format((float) ($item->valor_acrescimo ?? 0), 2, ',', '.') }}</td>
+                                    <td class="px-2 py-1 border border-gray-100 text-right {{ (float)($item->valor_desconto ?? 0) > 0 ? 'text-red-600' : 'text-gray-400' }}">R$ {{ number_format((float) ($item->valor_desconto ?? 0), 2, ',', '.') }}</td>
+                                    <td class="px-2 py-1 border border-gray-100 text-right font-semibold text-green-700">R$ {{ number_format((float) $item->valor_total, 2, ',', '.') }}</td>
+                                </tr>
+                                @if ($item->observacoes)
+                                    <tr class="bg-gray-50/50">
+                                        <td colspan="6" class="px-2 py-0.5 text-[8px] text-gray-500 italic border border-gray-100">Obs: {{ $item->observacoes }}</td>
+                                    </tr>
+                                @endif
+                            @endforeach
+                            <tr class="bg-green-50/50 font-semibold">
+                                <td colspan="5" class="px-2 py-1 border border-gray-100 text-right text-green-700">Subtotal Produtos:</td>
+                                <td class="px-2 py-1 border border-gray-100 text-right text-green-700">R$ {{ number_format($itensProduto->sum('valor_total'), 2, ',', '.') }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+
+            @if ($itensOutros->count())
+                <div class="mb-1">
+                    <h6 class="text-[9px] font-bold text-gray-600 uppercase tracking-wide mb-1 flex items-center gap-1">
+                        <x-heroicon-m-ellipsis-horizontal-circle class="w-3 h-3" /> Outros
+                    </h6>
+                    <table class="w-full text-[9px] border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50 text-gray-600">
+                                <th class="text-left px-2 py-1 border border-gray-100">Descrição</th>
+                                <th class="text-right px-2 py-1 border border-gray-100">Qtd.</th>
+                                <th class="text-right px-2 py-1 border border-gray-100">Valor Unit.</th>
+                                <th class="text-right px-2 py-1 border border-gray-100">Acréscimo</th>
+                                <th class="text-right px-2 py-1 border border-gray-100">Desconto</th>
+                                <th class="text-right px-2 py-1 border border-gray-100">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($itensOutros as $item)
+                                <tr class="border-b border-gray-100">
+                                    <td class="px-2 py-1 border border-gray-100">
+                                        {{ $item->descricao }}
+                                        @if ($item->concluido) <span class="ml-1 text-green-600 font-bold">✓</span> @endif
+                                    </td>
+                                    <td class="px-2 py-1 border border-gray-100 text-right">{{ number_format((float) $item->quantidade, 2, ',', '.') }}</td>
+                                    <td class="px-2 py-1 border border-gray-100 text-right">R$ {{ number_format((float) $item->valor_unitario, 2, ',', '.') }}</td>
+                                    <td class="px-2 py-1 border border-gray-100 text-right {{ (float)($item->valor_acrescimo ?? 0) > 0 ? 'text-blue-700' : 'text-gray-400' }}">R$ {{ number_format((float) ($item->valor_acrescimo ?? 0), 2, ',', '.') }}</td>
+                                    <td class="px-2 py-1 border border-gray-100 text-right {{ (float)($item->valor_desconto ?? 0) > 0 ? 'text-red-600' : 'text-gray-400' }}">R$ {{ number_format((float) ($item->valor_desconto ?? 0), 2, ',', '.') }}</td>
+                                    <td class="px-2 py-1 border border-gray-100 text-right font-semibold text-green-700">R$ {{ number_format((float) $item->valor_total, 2, ',', '.') }}</td>
+                                </tr>
+                                @if ($item->observacoes)
+                                    <tr class="bg-gray-50/50">
+                                        <td colspan="6" class="px-2 py-0.5 text-[8px] text-gray-500 italic border border-gray-100">Obs: {{ $item->observacoes }}</td>
+                                    </tr>
+                                @endif
+                            @endforeach
+                            <tr class="bg-gray-100/60 font-semibold">
+                                <td colspan="5" class="px-2 py-1 border border-gray-100 text-right text-gray-600">Subtotal Outros:</td>
+                                <td class="px-2 py-1 border border-gray-100 text-right text-gray-600">R$ {{ number_format($itensOutros->sum('valor_total'), 2, ',', '.') }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            @endif
         </div>
 
         <!-- Resumo Financeiro -->
@@ -183,7 +280,25 @@
                 <x-heroicon-s-currency-dollar class="w-5 h-5 mr-2 text-primary-600" /> Resumo Financeiro
             </h5>
             <dl class="space-y-1 text-[10px] max-w-xs ml-auto">
-                <div class="flex justify-between text-gray-700">
+                @if ($itensServico->count())
+                    <div class="flex justify-between text-blue-700">
+                        <dt>Serviços:</dt>
+                        <dd>R$ {{ number_format($itensServico->sum('valor_total'), 2, ',', '.') }}</dd>
+                    </div>
+                @endif
+                @if ($itensProduto->count())
+                    <div class="flex justify-between text-green-700">
+                        <dt>Produtos:</dt>
+                        <dd>R$ {{ number_format($itensProduto->sum('valor_total'), 2, ',', '.') }}</dd>
+                    </div>
+                @endif
+                @if ($itensOutros->count())
+                    <div class="flex justify-between text-gray-600">
+                        <dt>Outros:</dt>
+                        <dd>R$ {{ number_format($itensOutros->sum('valor_total'), 2, ',', '.') }}</dd>
+                    </div>
+                @endif
+                <div class="flex justify-between text-gray-700 pt-1 border-t border-gray-100">
                     <dt>Subtotal dos Itens:</dt>
                     <dd>R$ {{ number_format((float) ($os->valor_subtotal ?? 0), 2, ',', '.') }}</dd>
                 </div>

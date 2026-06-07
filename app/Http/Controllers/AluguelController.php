@@ -62,7 +62,7 @@ class AluguelController extends Controller
 
 
     /**
-     * Gera o relatório de aluguéis com base nos filtros
+     * Gera o relatório de aluguéis com base nos filtros (GET)
      */
     public function gerarRelatorioAlugueis(Request $request): View
     {

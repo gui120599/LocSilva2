@@ -12,6 +12,7 @@ enum StatusOrdemServico: string implements HasColor, HasIcon, HasLabel
     case EmAndamento      = 'em_andamento';
     case AguardandoPecas  = 'aguardando_pecas';
     case Concluida        = 'concluida';
+    case Pendente         = 'pendente';
     case Cancelada        = 'cancelada';
 
     public function getLabel(): string
@@ -21,6 +22,7 @@ enum StatusOrdemServico: string implements HasColor, HasIcon, HasLabel
             self::EmAndamento     => 'Em Andamento',
             self::AguardandoPecas => 'Aguardando Peças',
             self::Concluida       => 'Concluída',
+            self::Pendente        => 'Pendente',
             self::Cancelada       => 'Cancelada',
         };
     }
@@ -32,7 +34,8 @@ enum StatusOrdemServico: string implements HasColor, HasIcon, HasLabel
             self::EmAndamento     => 'warning',
             self::AguardandoPecas => 'warning',
             self::Concluida       => 'success',
-            self::Cancelada       => 'danger',
+            self::Pendente        => 'danger',
+            self::Cancelada       => 'gray',
         };
     }
 
@@ -43,6 +46,7 @@ enum StatusOrdemServico: string implements HasColor, HasIcon, HasLabel
             self::EmAndamento     => 'heroicon-m-wrench-screwdriver',
             self::AguardandoPecas => 'heroicon-m-cube',
             self::Concluida       => 'heroicon-m-check-badge',
+            self::Pendente        => 'heroicon-m-exclamation-circle',
             self::Cancelada       => 'heroicon-m-no-symbol',
         };
     }

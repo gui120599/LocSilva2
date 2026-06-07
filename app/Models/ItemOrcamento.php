@@ -18,6 +18,7 @@ class ItemOrcamento extends Model
         'descricao',
         'quantidade',
         'valor_unitario',
+        'valor_acrescimo',
         'valor_desconto',
         'valor_total',
         'observacoes',
@@ -27,6 +28,7 @@ class ItemOrcamento extends Model
         'tipo'          => TipoItem::class,
         'quantidade'    => 'decimal:3',
         'valor_unitario' => 'decimal:2',
+        'valor_acrescimo' => 'decimal:2',
         'valor_desconto' => 'decimal:2',
         'valor_total'   => 'decimal:2',
     ];
@@ -60,6 +62,6 @@ class ItemOrcamento extends Model
      */
     public function calcularValorTotal(): float
     {
-        return ($this->quantidade * $this->valor_unitario) - ($this->valor_desconto ?? 0);
+        return ($this->quantidade * $this->valor_unitario) + ($this->valor_acrescimo ?? 0) - ($this->valor_desconto ?? 0);
     }
 }

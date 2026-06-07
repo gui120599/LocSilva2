@@ -50,9 +50,10 @@ class OrdemServicoResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => ListOrdensServicos::route('/'),
-            'create' => CreateOrdemServico::route('/create'),
-            'edit'   => EditOrdemServico::route('/{record}/edit'),
+            'index'     => ListOrdensServicos::route('/'),
+            'create'    => CreateOrdemServico::route('/create'),
+            'edit'      => EditOrdemServico::route('/{record}/edit'),
+            'relatorio' => Pages\Relatorio::route('/relatorio'),
         ];
     }
 
